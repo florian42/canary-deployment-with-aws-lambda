@@ -40,23 +40,30 @@ export class WeightedLambdaStack extends cdk.Stack {
       },
     });
 
+    // helloLambda.currentVersion.addAlias('prod') // 1. Add an alias which versions the lambda and deploy
 
+    // 2. Retrieve prod version
     const prodVersion = lambda.Version.fromVersionArn(
       this,
       "prod",
-      `${helloLambda.functionArn}:3`
+      `${helloLambda.functionArn}:1`
     );
 
-    prodVersion.addAlias("canary", {
-      additionalVersions: [{ version: helloLambda.currentVersion, weight: 0.5 }],
-    })
+    // 3. Create new weighted alias and make changes to lambda handler to see the difference when testing, dont forget to build before next cdk deploy!
+    const canaryAlias = prodVersion.addAlias("canary", {
+      additionalVersions: [
+        { version: helloLambda.currentVersion, weight: 0.5 },
+      ],
+    });
 
-    // const api = new RestApi(this, 'itemsApi', {
-    //   restApiName: 'Items Service'
-    // });
+    // 4. Create API Gateway
+    const api = new RestApi(this, "helloApi", {
+      restApiName: "Hello Service",
+    });
 
-    // const hello = api.root.addResource('hello');
-    // const getAllIntegration = new LambdaIntegration(prodVersion);
-    // hello.addMethod('GET', getAllIntegration);
+    const hello = api.root.addResource("hello");
+    // 5. Reference the canary alias
+    const getAllIntegration = new LambdaIntegration(canaryAlias);
+    hello.addMethod("GET", getAllIntegration);
   }
 }
